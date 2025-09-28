@@ -1,0 +1,162 @@
+/* Fullscreen page */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: "Poppins", sans-serif;
+  overflow: hidden;  /* prevent scrolling */
+}
+
+
+/* Left side - image with gradient overlay */
+.login-left {
+  flex: 1;
+  height: 100%;
+  background: url("/daniela-cuevas-t7YycgAoVSw-unsplash.jpg") center/cover no-repeat;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;   /* prevent scroll */
+}
+
+.login-left .overlay {
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  padding: 30px;
+  text-align: center;
+  border-radius: 20px;
+  max-width: 90%;
+  box-sizing: border-box;
+}
+
+.login-left h1 {
+  margin: 0 0 10px;
+  font-size: 36px;
+}
+
+.login-left p {
+  font-size: 18px;
+}
+
+/* Right side - form card */
+.login-right {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f6fa;
+  overflow: hidden;  /* prevent scroll */
+}
+
+.login-card {
+  width: 90%;          
+  max-width: 400px;    
+  padding: 30px;       /* slightly reduced padding */
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+  text-align: center;
+  box-sizing: border-box;  /* include padding in width */
+}
+
+.login-card h2 {
+  margin-bottom: 20px;
+  color: #004e92;
+}
+
+/* Tab buttons */
+.tab-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 25px;
+}
+
+.tab-buttons button {
+  flex: 1;
+  padding: 10px 0;
+  margin: 0 5px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  background: #e0e0e0;
+  color: #333;
+  font-weight: 500;
+  transition: 0.3s;
+}
+
+.tab-buttons button.active {
+  background: #004e92;
+  color: #fff;
+}
+
+/* Form styling */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.login-form input {
+  padding: 12px 15px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  outline: none;
+  font-size: 15px;
+}
+
+.login-form input:focus {
+  border-color: #004e92;
+  box-shadow: 0 0 5px rgba(0, 78, 146, 0.5);
+}
+
+.login-form button {
+  background: #004e92;
+  color: #fff;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+.login-form button:hover {
+  background: #00336d;
+}
+
+/* Message */
+.message {
+  margin-top: 15px;
+  color: green;
+  font-weight: bold;
+}
+
+/* Responsive for mobile */
+@media (max-width: 768px) {
+  .login-page {
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+  }
+  .login-left {
+    display: none;
+  }
+  .login-right {
+    flex: 1;
+    width: 100%;
+    padding: 20px;
+  }
+}
+
+.login-page {
+  position: fixed; /* added */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
