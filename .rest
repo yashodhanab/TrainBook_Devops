@@ -1,18 +1,17 @@
-//user registration
+### User Registration !!!!
 POST http://localhost:5000/register
 Content-Type: application/json
 
 {
-  "email": "test1@gmail.com",
-  "password": "test123"
+  "email": "tests4@gmail.com",
+  "password": "test12s3"
 }
 
-
-
-//user login
+### User Login !!!!!
 POST http://localhost:5000/login
 Content-Type: application/json
+
 {
-  "email": "test@gmail.com",
-  "password": "test123"
+  "email": "tests4@gmail.com",
+  "password": "test12s3"
 }
