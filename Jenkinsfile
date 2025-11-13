@@ -24,7 +24,16 @@ pipeline {
         stage('Run Containers') {
             steps {
                 script {
-                    echo 'Starting services...'
+                    echo 'Cleaning old containers...'
+                    bat '''
+                    docker compose down
+                    docker rm -f mongo_container || echo "No existing mongo_container"
+                    docker rm -f node_backend || echo "No existing node_backend"
+                    docker rm -f vite_frontend || echo "No existing vite_frontend"
+                    docker volume prune -f
+                    '''
+
+                    echo 'Starting new services...'
                     bat 'docker compose up -d'
                 }
             }
@@ -63,7 +72,7 @@ pipeline {
 
     post {
         always {
-            echo 'Cleaning up...'
+            echo 'Cleaning up after pipeline...'
             bat 'docker compose down'
         }
     }
