@@ -16,7 +16,7 @@ pipeline {
             steps {
                 script {
                     echo 'Building Docker images...'
-                    sh 'docker compose build'
+                    bat 'docker compose build'
                 }
             }
         }
@@ -25,7 +25,7 @@ pipeline {
             steps {
                 script {
                     echo 'Starting services...'
-                    sh 'docker compose up -d'
+                    bat 'docker compose up -d'
                 }
             }
         }
@@ -34,7 +34,7 @@ pipeline {
             steps {
                 script {
                     echo 'Checking running containers...'
-                    sh 'docker ps'
+                    bat 'docker ps'
                 }
             }
         }
@@ -42,9 +42,11 @@ pipeline {
         stage('Test Backend') {
             steps {
                 script {
-                    echo 'Testing backend API health...'
-                    // Simple curl test to verify backend responds
-                    sh 'sleep 10 && curl -f http://localhost:5000 || exit 1'
+                    echo 'Testing backend...'
+                    bat '''
+                    timeout /t 10
+                    curl http://localhost:5000 || exit /b 1
+                    '''
                 }
             }
         }
@@ -53,7 +55,7 @@ pipeline {
             steps {
                 script {
                     echo 'Testing frontend...'
-                    sh 'curl -f http://localhost:5173 || exit 1'
+                    bat 'curl http://localhost:5173 || exit /b 1'
                 }
             }
         }
@@ -62,7 +64,7 @@ pipeline {
     post {
         always {
             echo 'Cleaning up...'
-            sh 'docker compose down'
+            bat 'docker compose down'
         }
     }
 }
