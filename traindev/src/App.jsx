@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import Login from "./pages/Login"; // adjust path if needed
+import Login from "./pages/Login";
+import Home from "./pages/HomePage";
 import "./App.css";
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
         </div>
       )}
       <Login />
+      {/* <Home /> */}
     </div>
   );
 }

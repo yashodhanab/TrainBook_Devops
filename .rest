@@ -2,9 +2,14 @@
 POST http://localhost:5000/register
 Content-Type: application/json
 
+# {
+#   "email": "tests4@gmail.com",
+#   "password": "test12s3"
+# }
+
 {
-  "email": "tests4@gmail.com",
-  "password": "test12s3"
+  "email": "t@gmail.com",
+  "password": "test123"
 }
 
 ### User Login !!!!!

@@ -1,0 +1,131 @@
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: "Poppins", sans-serif;
+}
+
+/* FULL PAGE */
+.home-page {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+}
+
+/* LEFT SIDE */
+.home-left {
+  flex: 1;
+  background: url("/daniela-cuevas-t7YycgAoVSw-unsplash.jpg") center/cover no-repeat;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-left .overlay {
+  background: rgba(0,0,0,0.5);
+  padding: 30px;
+  border-radius: 20px;
+  color: #fff;
+  text-align: center;
+}
+
+.home-left h1 {
+  margin: 0 0 10px;
+  font-size: 40px;
+}
+
+/* RIGHT
+---------------------------------- */
+.home-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f6fa;
+}
+
+.home-card {
+  width: 90%;
+  max-width: 450px;
+  background: #fff;
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+  text-align: center;
+}
+
+.home-card h2 {
+  margin-bottom: 20px;
+  color: #004e92;
+}
+
+/* SEARCH BOX */
+.search-box {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.search-box input {
+  padding: 12px 15px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  outline: none;
+  font-size: 15px;
+}
+
+.search-box input:focus {
+  border-color: #004e92;
+}
+
+/* BUTTON */
+.search-btn {
+  padding: 12px;
+  background: #004e92;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.search-btn:hover {
+  background: #00336d;
+}
+
+/* AUTH BUTTONS */
+.auth-buttons {
+  margin-top: 20px;
+  display: flex;
+  gap: 15px;
+}
+
+.auth-buttons button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  background: #e0e0e0;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.auth-buttons button:hover {
+  background: #ccc;
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+  .home-page {
+    flex-direction: column;
+  }
+  .home-left {
+    height: 40%;
+  }
+  .home-right {
+    height: 60%;
+  }
+}
