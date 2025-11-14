@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import Home from "./pages/HomePage";
 import "./App.css";
@@ -16,15 +17,20 @@ function App() {
   }, []);
 
   return (
-    <div className="App">
-      {signupMessage && (
-        <div className="global-message">
-          ✅ {signupMessage}
-        </div>
-      )}
-      <Login />
-      {/* <Home /> */}
-    </div>
+    <Router>
+      <div className="App">
+        {signupMessage && (
+          <div className="global-message">
+            ✅ {signupMessage}
+          </div>
+        )}
+
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<Home />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
