@@ -84,9 +84,8 @@ pipeline {
 
     environment {
         COMPOSE_FILE = 'docker-compose.yml'
-        DOCKERHUB_CREDENTIALS = 'dockerhub-creds' // Jenkins credentials ID
-        DOCKERHUB_USERNAME = '' // will be set from credentials
-        DOCKERHUB_PASSWORD = '' // will be set from credentials
+        DOCKERHUB_CREDENTIALS = 'dockerhub' // Jenkins credentials ID
+        DOCKERHUB_USERNAME = 'yashodhana' // will be set from credentials // will be set from credentials
         IMAGE_TAG = 'latest' // you can change to commit hash if needed
     }
 
