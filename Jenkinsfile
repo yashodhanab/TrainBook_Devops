@@ -106,27 +106,29 @@ pipeline {
         }
 
         stage('Tag & Push to Docker Hub') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS,
-                                                      usernameVariable: 'DOCKERHUB_USERNAME',
-                                                      passwordVariable: 'DOCKERHUB_PASSWORD')]) {
-                        echo 'Logging in to Docker Hub...'
-                        bat "docker login -u %DOCKERHUB_USERNAME% -p %DOCKERHUB_PASSWORD%"
+    steps {
+        script {
+            withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS,
+                                              usernameVariable: 'DOCKERHUB_USERNAME',
+                                              passwordVariable: 'DOCKERHUB_PASSWORD')]) {
+                echo 'Logging in to Docker Hub...'
+                bat "docker login -u %DOCKERHUB_USERNAME% -p %DOCKERHUB_PASSWORD%"
 
-                        echo 'Tagging images...'
-                        bat "docker tag node_backend yourdockerhubusername/node_backend:%IMAGE_TAG%"
-                        bat "docker tag vite_frontend yourdockerhubusername/vite_frontend:%IMAGE_TAG%"
-                        bat "docker tag mongo_container yourdockerhubusername/mongo_container:%IMAGE_TAG%"
+                echo 'Tagging images...'
+                // Use the actual image names from docker images
+                bat "docker tag trainbook_dev-backend:latest %DOCKERHUB_USERNAME%/node_backend:latest"
+                bat "docker tag trainbook_dev-frontend:latest %DOCKERHUB_USERNAME%/vite_frontend:latest"
+                bat "docker tag mongo:6 %DOCKERHUB_USERNAME%/mongo_container:6"
 
-                        echo 'Pushing images to Docker Hub...'
-                        bat "docker push yourdockerhubusername/node_backend:%IMAGE_TAG%"
-                        bat "docker push yourdockerhubusername/vite_frontend:%IMAGE_TAG%"
-                        bat "docker push yourdockerhubusername/mongo_container:%IMAGE_TAG%"
-                    }
-                }
+                echo 'Pushing images to Docker Hub...'
+                bat "docker push %DOCKERHUB_USERNAME%/node_backend:latest"
+                bat "docker push %DOCKERHUB_USERNAME%/vite_frontend:latest"
+                bat "docker push %DOCKERHUB_USERNAME%/mongo_container:6"
             }
         }
+    }
+}
+
 
         stage('Run Containers') {
             steps {
