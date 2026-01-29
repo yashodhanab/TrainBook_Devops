@@ -1,0 +1,108 @@
+
+
+pipeline {
+    agent any
+
+    environment {
+        COMPOSE_FILE = 'docker-compose.yml'
+        DOCKERHUB_CREDENTIALS = 'dockerhub'
+        DOCKERHUB_USERNAME = 'yashodhana' 
+        IMAGE_TAG = 'latest'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Images') {
+            steps {
+                script {
+                    echo 'Building Docker images...'
+                    bat 'docker compose build'
+                }
+            }
+        }
+
+        stage('Tag & Push to Docker Hub') {
+    steps {
+        script {
+            withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CREDENTIALS,
+                                              usernameVariable: 'DH_USER',
+                                              passwordVariable: 'DH_PASS')]) {
+                echo 'Logging in to Docker Hub...'
+                bat "docker login -u %DH_USER% -p %DH_PASS%"
+
+                echo 'Tagging images...'
+                // Images are already named correctly by docker-compose, but we retag for the repo
+                bat "docker tag trainbook_dev-backend:latest %DH_USER%/node_backend:latest"
+                bat "docker tag trainbook_dev-frontend:latest %DH_USER%/vite_frontend:latest"
+                bat "docker tag mongo:6 %DH_USER%/mongo_container:6"
+
+                echo 'Pushing images to Docker Hub...'
+                bat "docker push %DH_USER%/node_backend:latest"
+                bat "docker push %DH_USER%/vite_frontend:latest"
+                bat "docker push %DH_USER%/mongo_container:6"
+            }
+        }
+    }
+}
+
+
+        stage('Run Containers') {
+            steps {
+                script {
+                    echo 'Cleaning old containers...'
+                    bat '''
+                    docker compose down
+                    docker rm -f mongo_container || echo "No existing mongo_container"
+                    docker rm -f node_backend || echo "No existing node_backend"
+                    docker rm -f vite_frontend || echo "No existing vite_frontend"
+                    docker volume prune -f
+                    '''
+                    echo 'Starting new services...'
+                    bat 'docker compose up -d'
+                }
+            }
+        }
+
+        stage('Verify Services') {
+            steps {
+                script {
+                    echo 'Checking running containers...'
+                    bat 'docker ps'
+                }
+            }
+        }
+
+        stage('Test Backend') {
+            steps {
+                script {
+                    echo 'Testing backend...'
+                    bat '''
+                    timeout /t 10
+                    curl http://localhost:5000 || exit /b 1
+                    '''
+                }
+            }
+        }
+
+        stage('Test Frontend') {
+            steps {
+                script {
+                    echo 'Testing frontend...'
+                    bat 'curl http://localhost:5173 || exit /b 1'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Cleaning up after pipeline...'
+            bat 'docker compose down'
+        }
+    }
+}

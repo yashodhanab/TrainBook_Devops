@@ -1,0 +1,257 @@
+/* Keep font & base similar to login page */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  font-family: "Poppins", sans-serif;
+}
+
+/* Page layout */
+.home-page {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+/* LEFT: hero image with dark overlay */
+.home-left {
+  flex: 1;
+  min-width: 360px;
+  background: url("/im.png") center/cover no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.home-left .overlay {
+  background: linear-gradient(180deg, rgba(0,78,146,0.85), rgba(0,36,73,0.75));
+  color: #fff;
+  padding: 36px;
+  border-radius: 18px;
+  max-width: 420px;
+  box-sizing: border-box;
+  text-align: left;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+
+.home-left h1 {
+  margin: 0;
+  font-size: 40px;
+  letter-spacing: -0.5px;
+}
+
+.home-left p {
+  margin: 8px 0 18px;
+  font-size: 16px;
+  opacity: 0.95;
+}
+
+/* hero features */
+.hero-features {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.hero-features .feature {
+  background: rgba(255,255,255,0.06);
+  padding: 10px 12px;
+  border-radius: 10px;
+  min-width: 120px;
+  box-sizing: border-box;
+}
+
+.hero-features .feature strong {
+  display: block;
+  font-size: 14px;
+}
+
+.hero-features .feature span {
+  display: block;
+  font-size: 12px;
+  opacity: 0.9;
+  margin-top: 4px;
+}
+
+/* RIGHT: main card area */
+.home-right {
+  flex: 1;
+  background: linear-gradient(180deg,#f5f6fa, #eef2f8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 30px;
+  overflow: auto;
+}
+
+.home-card {
+  width: 100%;
+  max-width: 720px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), #ffffff);
+  border-radius: 18px;
+  padding: 30px;
+  box-shadow: 0 20px 50px rgba(1, 20, 40, 0.08);
+  box-sizing: border-box;
+}
+
+/* headings */
+.home-card h2 {
+  margin: 0 0 6px;
+  color: #004e92;
+  font-size: 24px;
+}
+
+.home-card .subtitle {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: #50607a;
+}
+
+/* form layout */
+.search-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.row {
+  display: flex;
+  gap: 14px;
+}
+
+.field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field label {
+  font-size: 13px;
+  color: #556;
+}
+
+.field input,
+.field select {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #d6dbe6;
+  outline: none;
+  font-size: 14px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: #004e92;
+  box-shadow: 0 6px 18px rgba(0,78,146,0.08);
+}
+
+/* disabled button */
+.search-btn {
+  width: 100%;
+  background: #004e92;
+  color: #fff;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform .14s ease, box-shadow .14s ease, opacity .14s;
+  box-shadow: 0 10px 24px rgba(0,78,146,0.12);
+}
+
+.search-btn[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.actions {
+  margin-top: 6px;
+}
+
+/* error */
+.form-error {
+  color: #b00020;
+  font-size: 13px;
+  padding: 8px 10px;
+  background: rgba(176,0,32,0.05);
+  border-radius: 8px;
+}
+
+/* quick links and chips */
+.quick-links {
+  margin-top: 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.chips button {
+  border: 1px solid #e1e6f0;
+  background: #fff;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+
+.chips button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0,78,146,0.06);
+}
+
+/* Responsiveness */
+@media (max-width: 980px) {
+  .home-page {
+    flex-direction: column;
+  }
+  .home-left {
+    height: 220px;
+    width: 100%;
+    min-width: auto;
+    order: 0;
+  }
+  .home-right {
+    order: 1;
+    padding: 30px 18px;
+    min-height: calc(100vh - 220px);
+  }
+  .row {
+    flex-direction: column;
+  }
+  .home-card {
+    padding: 22px;
+    margin-top: -40px;
+    border-radius: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .home-left {
+    display: none;
+  }
+  .home-right {
+    padding: 18px;
+  }
+  .home-card {
+    width: 100%;
+    max-width: 420px;
+    padding: 18px;
+  }
+}
