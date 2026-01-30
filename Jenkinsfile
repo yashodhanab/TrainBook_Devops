@@ -21,15 +21,18 @@ pipeline {
         stage('Provision Infrastructure') {
             steps {
                 dir('terraform') {
+                    // DEBUG STEP: Print the file to the logs so we can see if the output block exists
+                    bat 'type main.tf'
+
                     withCredentials([
                         usernamePassword(credentialsId: AWS_CREDS_ID, usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY'),
                         usernamePassword(credentialsId: DOCKER_REGISTRY_CRED_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
                     ]) {
-                        // FIX: Added -no-color, && for error stopping, and ^ for line breaks (Windows)
                         bat '''
                         terraform init -no-color && ^
                         terraform plan -no-color -var="docker_username=%DOCKER_USER%" -var="docker_password=%DOCKER_PASS%" -out=tfplan && ^
                         terraform apply -no-color -auto-approve tfplan && ^
+                        terraform refresh -no-color && ^
                         terraform output -raw instance_ip > ../server_ip.txt
                         '''
                     }
