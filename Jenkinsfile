@@ -95,15 +95,25 @@ pipeline {
                     def SERVER_IP = readFile('server_ip.txt').trim()
                     echo "Deploying to Server at: ${SERVER_IP}"
                     
-                    // Wait for EC2 to be fully initialized
                     sleep time: 45, unit: 'SECONDS' 
 
-                    // FIX: Use 'withCredentials' to get the key file path directly.
-                    // This avoids the "sshagent" plugin error completely.
                     withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY')]) {
-                        // We use the SSH_KEY variable (which points to a temp file) with the -i flag
-                        bat """
-                            ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no ubuntu@${SERVER_IP} "sudo docker pull mongo:6 && sudo docker pull %DOCKERHUB_USERNAME%/%BACKEND_IMAGE%:latest && sudo docker pull %DOCKERHUB_USERNAME%/%FRONTEND_IMAGE%:latest && sudo docker stop trainbook_dev-frontend trainbook_dev-backend mongo-db || true && sudo docker rm trainbook_dev-frontend trainbook_dev-backend mongo-db || true && sudo docker network create app-network || true && sudo docker run -d --name mongo-db --network app-network -p 27017:27017 mongo:6 && sudo docker run -d --name trainbook_dev-backend --network app-network -p 5000:5000 -e MONGO_URL=mongodb://mongo-db:27017/authdb %DOCKERHUB_USERNAME%/%BACKEND_IMAGE%:latest && sudo docker run -d --name trainbook_dev-frontend --network app-network -p 80:5173 %DOCKERHUB_USERNAME%/%FRONTEND_IMAGE%:latest"
+                        // FIX: Use PowerShell to handle permissions and the long command cleanly
+                        powershell """
+                            # 1. Get the Key Path
+                            \$key = "\$env:SSH_KEY"
+                            
+                            # 2. FIX PERMISSIONS (The Magic Step)
+                            # Remove inheritance and grant Read-Only access JUST to the current user
+                            # This satisfies the "UNPROTECTED PRIVATE KEY FILE" error.
+                            icacls "\$key" /inheritance:r /grant:r "\$env:USERNAME:R"
+                            
+                            # 3. Define the long Docker command (broken into a variable for safety)
+                            \$dockerCmd = "sudo docker pull mongo:6 && sudo docker pull ${DOCKERHUB_USERNAME}/${BACKEND_IMAGE}:latest && sudo docker pull ${DOCKERHUB_USERNAME}/${FRONTEND_IMAGE}:latest && sudo docker stop trainbook_dev-frontend trainbook_dev-backend mongo-db || true && sudo docker rm trainbook_dev-frontend trainbook_dev-backend mongo-db || true && sudo docker network create app-network || true && sudo docker run -d --name mongo-db --network app-network -p 27017:27017 mongo:6 && sudo docker run -d --name trainbook_dev-backend --network app-network -p 5000:5000 -e MONGO_URL=mongodb://mongo-db:27017/authdb ${DOCKERHUB_USERNAME}/${BACKEND_IMAGE}:latest && sudo docker run -d --name trainbook_dev-frontend --network app-network -p 80:5173 ${DOCKERHUB_USERNAME}/${FRONTEND_IMAGE}:latest"
+                            
+                            # 4. Run SSH
+                            Write-Host "Connecting to ${SERVER_IP}..."
+                            ssh -i "\$key" -o StrictHostKeyChecking=no ubuntu@${SERVER_IP} \$dockerCmd
                         """
                     }
                 }
