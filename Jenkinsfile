@@ -7,7 +7,7 @@ pipeline {
         BACKEND_IMAGE           = 'trainbook_dev-backend'
         FRONTEND_IMAGE          = 'trainbook_dev-frontend'
         AWS_CREDS_ID            = 'aws-terraform-creds'
-        AWS_DEFAULT_REGION      = 'ap-south-1'
+        AWS_DEFAULT_REGION      = 'us-east-1c'
     }
 
     stages {
