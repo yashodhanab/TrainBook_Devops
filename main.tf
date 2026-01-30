@@ -159,29 +159,28 @@ terraform {
 }
 
 provider "aws" {
-  region = "ap-south-1"
+  region = var.region
 }
 
-# --- 1. Key Pair Generation ---
-resource "tls_private_key" "pk" {
-  algorithm = "RSA"
-  rsa_bits  = 4096
-}
+# --- Variables (Passed from Jenkins) ---
+variable "region" {}
+variable "ssh_public_key" {}      # The actual public key text
+variable "ssh_private_key_path" {} # Path to the private key file on Jenkins agent
+variable "docker_username" {}
+variable "frontend_image" {}
+variable "backend_image" {}
+variable "image_tag" {}
 
+# --- 1. Key Pair ---
+# Use the Public Key provided by Jenkins Credential
 resource "aws_key_pair" "kp" {
-  key_name   = "trainbook-jenkins-key" # Unique name
-  public_key = tls_private_key.pk.public_key_openssh
-}
-
-resource "local_file" "ssh_key" {
-  filename        = "${path.module}/trainbook-key.pem"
-  content         = tls_private_key.pk.private_key_pem
-  file_permission = "0400"
+  key_name   = "trainbook-jenkins-key"
+  public_key = var.ssh_public_key
 }
 
 # --- 2. Security Group ---
 resource "aws_security_group" "web_sg" {
-  name_prefix = "trainbook-sg-" # Uses prefix to avoid duplicate errors
+  name_prefix = "trainbook-sg-"
   description = "Allow SSH, Backend, and Frontend"
 
   ingress {
@@ -226,14 +225,31 @@ resource "aws_instance" "web_server" {
   key_name               = aws_key_pair.kp.key_name
   vpc_security_group_ids = [aws_security_group.web_sg.id]
 
+  # SSH Connection for provisioners
   connection {
     type        = "ssh"
     user        = "ubuntu"
-    private_key = tls_private_key.pk.private_key_pem
+    private_key = file(var.ssh_private_key_path)
     host        = self.public_ip
   }
 
-  # Install Docker Only (No source code copy needed)
+  # Copy Docker Compose File only
+  provisioner "file" {
+    source      = "./docker-compose.yml"
+    destination = "/home/ubuntu/docker-compose.yml"
+  }
+
+  # Create .env file for Docker variables
+  provisioner "remote-exec" {
+    inline = [
+      "echo 'DOCKER_USERNAME=${var.docker_username}' > /home/ubuntu/.env",
+      "echo 'FRONTEND_IMAGE=${var.frontend_image}' >> /home/ubuntu/.env",
+      "echo 'BACKEND_IMAGE=${var.backend_image}' >> /home/ubuntu/.env",
+      "echo 'IMAGE_TAG=${var.image_tag}' >> /home/ubuntu/.env"
+    ]
+  }
+
+  # Install Docker & Start App
   provisioner "remote-exec" {
     inline = [
       "sudo apt-get update -y",
@@ -244,13 +260,16 @@ resource "aws_instance" "web_server" {
       "echo \"deb [arch=\"$(dpkg --print-architecture)\" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \"$(. /etc/os-release && echo \"$VERSION_CODENAME\")\" stable\" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null",
       "sudo apt-get update -y",
       "sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin",
-      "sudo usermod -aG docker ubuntu"
-      # We STOP here. Jenkins will run 'docker compose up' later.
+      "sudo usermod -aG docker ubuntu",
+      
+      # Pull images and run
+      "cd /home/ubuntu",
+      "sudo docker compose pull", 
+      "sudo docker compose up -d"
     ]
   }
 }
 
-# --- 4. Output ---
-output "public_ip" {
-  value = aws_instance.web_server.public_ip
+output "frontend_url" {
+  value = "http://${aws_instance.web_server.public_ip}:5173"
 }
