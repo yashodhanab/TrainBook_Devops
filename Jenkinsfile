@@ -98,24 +98,25 @@ pipeline {
                     sleep time: 45, unit: 'SECONDS' 
 
                     withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY')]) {
-                        // IMPORTANT: We use 'powershell' here. 
-                        // Do NOT change this back to 'bat'.
                         powershell """
                             \$ErrorActionPreference = 'Stop'
-                            
-                            # 1. Get the Key Path
                             \$keyPath = "\$env:SSH_KEY"
                             
-                            # 2. FIX PERMISSIONS (The Magic Step)
-                            # This command removes "public" access so OpenSSH accepts the key.
-                            Write-Host "Securing private key permissions..."
-                            icacls "\$keyPath" /inheritance:r /grant:r "\$env:USERNAME:R"
+                            # 1. FIX PERMISSIONS (Simplified)
+                            # First, remove inheritance (strips 'Users' group access)
+                            Write-Host "Securing private key: Removing inheritance..."
+                            icacls "\$keyPath" /inheritance:r
                             
-                            # 3. Define the command variables
+                            # Second, explicitly grant Read access to the current Jenkins user
+                            # (Removed ':r' to fix the Invalid Parameter error)
+                            Write-Host "Securing private key: Granting user access..."
+                            icacls "\$keyPath" /grant "\$env:USERNAME:R"
+                            
+                            # 2. DEFINE COMMANDS
                             \$ip = "${SERVER_IP}"
                             \$dockerCmd = "sudo docker pull mongo:6 && sudo docker pull ${DOCKERHUB_USERNAME}/${BACKEND_IMAGE}:latest && sudo docker pull ${DOCKERHUB_USERNAME}/${FRONTEND_IMAGE}:latest && sudo docker stop trainbook_dev-frontend trainbook_dev-backend mongo-db || true && sudo docker rm trainbook_dev-frontend trainbook_dev-backend mongo-db || true && sudo docker network create app-network || true && sudo docker run -d --name mongo-db --network app-network -p 27017:27017 mongo:6 && sudo docker run -d --name trainbook_dev-backend --network app-network -p 5000:5000 -e MONGO_URL=mongodb://mongo-db:27017/authdb ${DOCKERHUB_USERNAME}/${BACKEND_IMAGE}:latest && sudo docker run -d --name trainbook_dev-frontend --network app-network -p 80:5173 ${DOCKERHUB_USERNAME}/${FRONTEND_IMAGE}:latest"
 
-                            # 4. Run SSH
+                            # 3. CONNECT
                             Write-Host "Connecting to \$ip..."
                             ssh -i "\$keyPath" -o StrictHostKeyChecking=no ubuntu@\$ip \$dockerCmd
                         """
