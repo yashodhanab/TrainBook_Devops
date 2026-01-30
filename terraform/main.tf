@@ -1,5 +1,5 @@
 resource "aws_security_group" "web_sg" {
-  name        = "jenkins-demo-sg-v2"
+  name        = "jenkins-demo-sg-v3"
   description = "Allow SSH and HTTP"
 
   ingress {
