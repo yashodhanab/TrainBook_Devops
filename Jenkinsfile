@@ -70,51 +70,96 @@ pipeline {
             }
         }
 
-        stage('Deploy to EC2') {
-            steps {
-                script {
-                    def SERVER_IP = readFile('server_ip.txt').trim()
-                    echo "Deploying to Server at: ${SERVER_IP}"
+        // stage('Deploy to EC2') {
+        //     steps {
+        //         script {
+        //             def SERVER_IP = readFile('server_ip.txt').trim()
+        //             echo "Deploying to Server at: ${SERVER_IP}"
                     
-                    sleep time: 45, unit: 'SECONDS' 
+        //             sleep time: 45, unit: 'SECONDS' 
 
-                    withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY_FILE')]) {
-                        powershell """
-                            \$ErrorActionPreference = 'Stop'
-                            \$sourceKey = "\$env:SSH_KEY_FILE"
-                            \$tempKey = "\$env:TEMP\\jenkins_deploy_key.pem"
-                            \$ip = "${SERVER_IP}"
+        //             withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY_FILE')]) {
+        //                 powershell """
+        //                     \$ErrorActionPreference = 'Stop'
+        //                     \$sourceKey = "\$env:SSH_KEY_FILE"
+        //                     \$tempKey = "\$env:TEMP\\jenkins_deploy_key.pem"
+        //                     \$ip = "${SERVER_IP}"
 
-                            # 1. Copy key to TEMP to get a clean file (Bypassing workspace permissions)
-                            Copy-Item "\$sourceKey" -Destination "\$tempKey" -Force
+        //                     # 1. Copy key to TEMP to get a clean file (Bypassing workspace permissions)
+        //                     Copy-Item "\$sourceKey" -Destination "\$tempKey" -Force
 
-                            # 2. Fix Permissions using Native .NET (This cannot fail with syntax errors)
-                            Write-Host "Securing private key..."
-                            \$acl = Get-Acl \$tempKey
+        //                     # 2. Fix Permissions using Native .NET (This cannot fail with syntax errors)
+        //                     Write-Host "Securing private key..."
+        //                     \$acl = Get-Acl \$tempKey
                             
-                            # Remove all inherited permissions (wipes the file clean)
-                            \$acl.SetAccessRuleProtection(\$true, \$false)
+        //                     # Remove all inherited permissions (wipes the file clean)
+        //                     \$acl.SetAccessRuleProtection(\$true, \$false)
                             
-                            # Grant Read access to the current Jenkins User ONLY
-                            # We use 'AccessControl' namespace to fix the 'Type not found' error
-                            \$rule = New-Object System.Security.AccessControl.FileSystemAccessRule("\$env:USERNAME", "Read", "Allow")
+        //                     # Grant Read access to the current Jenkins User ONLY
+        //                     # We use 'AccessControl' namespace to fix the 'Type not found' error
+        //                     \$rule = New-Object System.Security.AccessControl.FileSystemAccessRule("\$env:USERNAME", "Read", "Allow")
                             
-                            \$acl.AddAccessRule(\$rule)
-                            Set-Acl \$tempKey \$acl
+        //                     \$acl.AddAccessRule(\$rule)
+        //                     Set-Acl \$tempKey \$acl
 
-                            # 3. Run Docker Command
-                            \$cmd = "sudo docker pull mongo:6 && sudo docker pull ${DOCKERHUB_USERNAME}/${BACKEND_IMAGE}:latest && sudo docker pull ${DOCKERHUB_USERNAME}/${FRONTEND_IMAGE}:latest && sudo docker stop trainbook_dev-frontend trainbook_dev-backend mongo-db || true && sudo docker rm trainbook_dev-frontend trainbook_dev-backend mongo-db || true && sudo docker network create app-network || true && sudo docker run -d --name mongo-db --network app-network -p 27017:27017 mongo:6 && sudo docker run -d --name trainbook_dev-backend --network app-network -p 5000:5000 -e MONGO_URL=mongodb://mongo-db:27017/authdb ${DOCKERHUB_USERNAME}/${BACKEND_IMAGE}:latest && sudo docker run -d --name trainbook_dev-frontend --network app-network -p 80:5173 ${DOCKERHUB_USERNAME}/${FRONTEND_IMAGE}:latest"
+        //                     # 3. Run Docker Command
+        //                     \$cmd = "sudo docker pull mongo:6 && sudo docker pull ${DOCKERHUB_USERNAME}/${BACKEND_IMAGE}:latest && sudo docker pull ${DOCKERHUB_USERNAME}/${FRONTEND_IMAGE}:latest && sudo docker stop trainbook_dev-frontend trainbook_dev-backend mongo-db || true && sudo docker rm trainbook_dev-frontend trainbook_dev-backend mongo-db || true && sudo docker network create app-network || true && sudo docker run -d --name mongo-db --network app-network -p 27017:27017 mongo:6 && sudo docker run -d --name trainbook_dev-backend --network app-network -p 5000:5000 -e MONGO_URL=mongodb://mongo-db:27017/authdb ${DOCKERHUB_USERNAME}/${BACKEND_IMAGE}:latest && sudo docker run -d --name trainbook_dev-frontend --network app-network -p 80:5173 ${DOCKERHUB_USERNAME}/${FRONTEND_IMAGE}:latest"
                             
-                            Write-Host "Connecting to \$ip..."
-                            ssh -i "\$tempKey" -o StrictHostKeyChecking=no ubuntu@\$ip \$cmd
+        //                     Write-Host "Connecting to \$ip..."
+        //                     ssh -i "\$tempKey" -o StrictHostKeyChecking=no ubuntu@\$ip \$cmd
                             
-                            # 4. Cleanup
-                            Remove-Item "\$tempKey" -Force
-                        """
-                    }
-                }
+        //                     # 4. Cleanup
+        //                     Remove-Item "\$tempKey" -Force
+        //                 """
+        //             }
+        //         }
+        //     }
+        // }
+
+        stage('Deploy to EC2') {
+    steps {
+        script {
+            def SERVER_IP = readFile('server_ip.txt').trim()
+            echo "Deploying to Server at: ${SERVER_IP}"
+
+            sleep time: 45, unit: 'SECONDS'
+
+            withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY_FILE')]) {
+                powershell """
+                    \$ErrorActionPreference = 'Stop'
+
+                    \$key = "\$env:SSH_KEY_FILE"
+                    \$ip  = "${SERVER_IP}"
+
+                    Write-Host "Deploying to \$ip..."
+
+                    \$cmd = @"
+sudo docker pull mongo:6 &&
+sudo docker pull ${DOCKERHUB_USERNAME}/${BACKEND_IMAGE}:latest &&
+sudo docker pull ${DOCKERHUB_USERNAME}/${FRONTEND_IMAGE}:latest &&
+
+sudo docker stop trainbook_dev-frontend trainbook_dev-backend mongo-db || true &&
+sudo docker rm trainbook_dev-frontend trainbook_dev-backend mongo-db || true &&
+
+sudo docker network create app-network || true &&
+
+sudo docker run -d --name mongo-db --network app-network -p 27017:27017 mongo:6 &&
+
+sudo docker run -d --name trainbook_dev-backend --network app-network -p 5000:5000 \
+  -e MONGO_URL=mongodb://mongo-db:27017/authdb \
+  ${DOCKERHUB_USERNAME}/${BACKEND_IMAGE}:latest &&
+
+sudo docker run -d --name trainbook_dev-frontend --network app-network -p 80:5173 \
+  ${DOCKERHUB_USERNAME}/${FRONTEND_IMAGE}:latest
+"@
+
+                    ssh -i "\$key" -o StrictHostKeyChecking=no ubuntu@\$ip "\$cmd"
+                """
             }
         }
+    }
+}
+
     }
 
     post {
