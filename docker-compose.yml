@@ -37,11 +37,10 @@
 # volumes:
 #   mongo_data:
 
-
 version: '3.8'
 services:
   backend:
-    # Point to your Docker Hub User/Image
+    # CHANGE: Point to your Docker Hub image
     image: yashodhana/trainbook_dev-backend:${IMAGE_TAG:-latest}
     container_name: trainbook_backend
     ports:
@@ -54,7 +53,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    # Point to your Docker Hub User/Image
+    # CHANGE: Point to your Docker Hub image
     image: yashodhana/trainbook_dev-frontend:${IMAGE_TAG:-latest}
     container_name: trainbook_frontend
     ports:

@@ -162,14 +162,14 @@ provider "aws" {
   region = "ap-south-1"
 }
 
-# --- 1. Key Pair (Generated in Jenkins Workspace) ---
+# --- 1. Key Pair Generation ---
 resource "tls_private_key" "pk" {
   algorithm = "RSA"
   rsa_bits  = 4096
 }
 
 resource "aws_key_pair" "kp" {
-  key_name   = "trainbook-jenkins-key"
+  key_name   = "trainbook-jenkins-key" # Unique name
   public_key = tls_private_key.pk.public_key_openssh
 }
 
@@ -181,7 +181,7 @@ resource "local_file" "ssh_key" {
 
 # --- 2. Security Group ---
 resource "aws_security_group" "web_sg" {
-  name_prefix = "trainbook-sg-"
+  name_prefix = "trainbook-sg-" # Uses prefix to avoid duplicate errors
   description = "Allow SSH, Backend, and Frontend"
 
   ingress {
@@ -213,7 +213,7 @@ resource "aws_security_group" "web_sg" {
 # --- 3. EC2 Instance ---
 data "aws_ami" "ubuntu" {
   most_recent = true
-  owners      = ["099720109477"]
+  owners      = ["099720109477"] # Canonical
   filter {
     name   = "name"
     values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
@@ -226,22 +226,27 @@ resource "aws_instance" "web_server" {
   key_name               = aws_key_pair.kp.key_name
   vpc_security_group_ids = [aws_security_group.web_sg.id]
 
-  # Provision Docker Only (One time setup)
-  user_data = <<-EOF
-              #!/bin/bash
-              apt-get update
-              apt-get install -y ca-certificates curl gnupg
-              install -m 0755 -d /etc/apt/keyrings
-              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-              chmod a+r /etc/apt/keyrings/docker.gpg
-              echo "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-              apt-get update
-              apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-              usermod -aG docker ubuntu
-              EOF
+  connection {
+    type        = "ssh"
+    user        = "ubuntu"
+    private_key = tls_private_key.pk.private_key_pem
+    host        = self.public_ip
+  }
 
-  tags = {
-    Name = "TrainBook-Server"
+  # Install Docker Only (No source code copy needed)
+  provisioner "remote-exec" {
+    inline = [
+      "sudo apt-get update -y",
+      "sudo apt-get install -y ca-certificates curl gnupg",
+      "sudo install -m 0755 -d /etc/apt/keyrings",
+      "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg",
+      "sudo chmod a+r /etc/apt/keyrings/docker.gpg",
+      "echo \"deb [arch=\"$(dpkg --print-architecture)\" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \"$(. /etc/os-release && echo \"$VERSION_CODENAME\")\" stable\" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null",
+      "sudo apt-get update -y",
+      "sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin",
+      "sudo usermod -aG docker ubuntu"
+      # We STOP here. Jenkins will run 'docker compose up' later.
+    ]
   }
 }
 
