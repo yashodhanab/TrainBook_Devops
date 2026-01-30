@@ -51,16 +51,19 @@ pipeline {
                 script {
                     echo "Running Terraform..."
                     withCredentials([usernamePassword(credentialsId: AWS_CRED_ID, usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                        
+                        // --- FIX: Force delete the locked key file so Terraform can recreate it ---
+                        // We use 'del /f /q' to force delete. 
+                        // If it fails (file doesn't exist), '|| exit 0' keeps the pipeline running.
+                        bat 'del /f /q trainbook-key.pem || exit 0'
+
                         bat 'terraform init'
                         bat 'terraform apply -auto-approve'
-                        
-                        // Save the IP address to a file so the next stage can read it
                         bat 'terraform output -raw public_ip > server_ip.txt'
                     }
                 }
             }
         }
-
         stage('Deploy to EC2') {
             steps {
                 script {
