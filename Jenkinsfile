@@ -17,8 +17,27 @@ pipeline {
             }
         }
 
-        
+        // --- STEP 1: Create Server & Get IP (MOVED TO TOP) ---
+        stage('Provision Infrastructure') {
+            steps {
+                dir('terraform') {
+                    withCredentials([
+                        usernamePassword(credentialsId: AWS_CREDS_ID, usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY'),
+                        usernamePassword(credentialsId: DOCKER_REGISTRY_CRED_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
+                    ]) {
+                        // FIX: Added -no-color, && for error stopping, and ^ for line breaks (Windows)
+                        bat '''
+                        terraform init -no-color && ^
+                        terraform plan -no-color -var="docker_username=%DOCKER_USER%" -var="docker_password=%DOCKER_PASS%" -out=tfplan && ^
+                        terraform apply -no-color -auto-approve tfplan && ^
+                        terraform output -raw instance_ip > ../server_ip.txt
+                        '''
+                    }
+                }
+            }
+        }
 
+        // --- STEP 2: Build Images (Uses the IP from Step 1) ---
         stage('Build Images') {
             steps {
                 script {
@@ -29,7 +48,6 @@ pipeline {
                     def SERVER_IP = readFile('server_ip.txt').trim()
                     
                     // SAFETY CHECK: Fail if Terraform returned a warning instead of an IP
-                    // This prevents the "The filename, directory name..." crash
                     if (SERVER_IP.contains("Warning") || SERVER_IP.contains("No outputs") || SERVER_IP == "") {
                         echo "Terraform Output was: ${SERVER_IP}"
                         error "BUILD FAILED: Terraform did not return a valid IP Address. Did you add the 'output' block to main.tf?"
@@ -38,13 +56,14 @@ pipeline {
                     echo "Valid IP Found: ${SERVER_IP}"
                     echo "Building Frontend with API URL: http://${SERVER_IP}:5000"
 
-                    // The actual build commands
+                    // The actual build commands (Using BAT for Windows)
                     bat "docker build --build-arg VITE_API_URL=http://${SERVER_IP}:5000 -t %DOCKERHUB_USERNAME%/%FRONTEND_IMAGE%:latest ./traindev"
                     bat "docker build -t %DOCKERHUB_USERNAME%/%BACKEND_IMAGE%:latest ./traindevback"
                 }
             }
         }
 
+        // --- STEP 3: Push to Hub ---
         stage('Push Images to Docker Hub') {
             steps {
                 script {
@@ -67,24 +86,7 @@ pipeline {
             }
         }
 
-       stage('Provision Infrastructure') {
-            steps {
-                dir('terraform') {
-                    withCredentials([
-                        usernamePassword(credentialsId: AWS_CREDS_ID, usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY'),
-                        usernamePassword(credentialsId: DOCKER_REGISTRY_CRED_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
-                    ]) {
-                        // FIX: Added -no-color, && for error stopping, and ^ for line breaks
-                        bat '''
-                        terraform init -no-color && ^
-                        terraform plan -no-color -var="docker_username=%DOCKER_USER%" -var="docker_password=%DOCKER_PASS%" -out=tfplan && ^
-                        terraform apply -no-color -auto-approve tfplan && ^
-                        terraform output -raw instance_ip > ../server_ip.txt
-                        '''
-                    }
-                }
-            }
-        }
+        // --- STEP 4: Deploy to EC2 ---
         stage('Deploy to EC2') {
             steps {
                 script {
@@ -95,10 +97,7 @@ pipeline {
                     sleep time: 45, unit: 'SECONDS' 
 
                     sshagent(credentials: ['ec2-ssh-key']) {
-                        // FIX: 
-                        // 1. Use 'bat' for the outer command.
-                        // 2. Use double quotes "..." for the SSH command argument (Windows requirement).
-                        // 3. Inner commands (Linux) are chained with &&
+                        // FIX: Windows BAT syntax calling Linux SSH
                         bat """
                             ssh -o StrictHostKeyChecking=no ubuntu@${SERVER_IP} "sudo docker pull mongo:6 && sudo docker pull %DOCKERHUB_USERNAME%/%BACKEND_IMAGE%:latest && sudo docker pull %DOCKERHUB_USERNAME%/%FRONTEND_IMAGE%:latest && sudo docker stop trainbook_dev-frontend trainbook_dev-backend mongo-db || true && sudo docker rm trainbook_dev-frontend trainbook_dev-backend mongo-db || true && sudo docker network create app-network || true && sudo docker run -d --name mongo-db --network app-network -p 27017:27017 mongo:6 && sudo docker run -d --name trainbook_dev-backend --network app-network -p 5000:5000 -e MONGO_URL=mongodb://mongo-db:27017/authdb %DOCKERHUB_USERNAME%/%BACKEND_IMAGE%:latest && sudo docker run -d --name trainbook_dev-frontend --network app-network -p 80:5173 %DOCKERHUB_USERNAME%/%FRONTEND_IMAGE%:latest"
                         """
