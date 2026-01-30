@@ -52,34 +52,37 @@ pipeline {
             }
         }
 
-        stage('Deploy to EC2') {
+stage('Deploy to EC2') {
             steps {
                 script {
                     def SERVER_IP = readFile('server_ip.txt').trim()
                     echo "Deploying to ${SERVER_IP}..."
 
-                    // --- FIX 1: Windows Permissions for SSH Key ---
+                    // --- FIX: Robust Windows Permissions for Jenkins Service ---
                     if (isUnix()) {
                         sh 'chmod 400 trainbook-key.pem'
                     } else {
-                        // Windows specific command to make key read-only
-                        // 1. Reset permissions
-                        // 2. Disable inheritance
-                        // 3. Grant current user read access
+                        // 1. Reset permissions to default
                         bat 'icacls trainbook-key.pem /reset'
+                        
+                        // 2. Remove all inherited permissions (File becomes inaccessible to everyone)
                         bat 'icacls trainbook-key.pem /inheritance:r'
-                        bat "icacls trainbook-key.pem /grant:r \"%USERNAME%\":R"
+                        
+                        // 3. Explicitly grant access to SYSTEM (The Jenkins Service)
+                        bat 'icacls trainbook-key.pem /grant:r SYSTEM:R'
+                        
+                        // 4. Explicitly grant access to Administrators (Just in case)
+                        bat 'icacls trainbook-key.pem /grant:r Administrators:R'
                     }
 
-                    // --- FIX 2: Wait for Docker Installation ---
-                    echo "Waiting 100 seconds for EC2 User Data to install Docker..."
+                    // --- Wait for Docker Installation ---
+                    echo "Waiting 100 seconds for EC2 to finish installing Docker..."
                     sleep 100 
 
-                    // 3. Copy docker-compose.yml
+                    // --- Copy & Deploy ---
                     echo "Copying configuration..."
                     bat "scp -o StrictHostKeyChecking=no -i trainbook-key.pem docker-compose.yml ubuntu@${SERVER_IP}:/home/ubuntu/docker-compose.yml"
 
-                    // 4. Run Docker Compose
                     echo "Starting containers..."
                     bat """
                     ssh -o StrictHostKeyChecking=no -i trainbook-key.pem ubuntu@${SERVER_IP} "export IMAGE_TAG=${TAG} && docker compose pull && docker compose up -d"
