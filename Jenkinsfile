@@ -98,22 +98,39 @@ pipeline {
                     sleep time: 45, unit: 'SECONDS' 
 
                     withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY')]) {
-                        // FIX: Use PowerShell to handle permissions and the long command cleanly
+                        // FIX: Use PowerShell to secure the key before using it.
                         powershell """
-                            # 1. Get the Key Path
-                            \$key = "\$env:SSH_KEY"
+                            \$ErrorActionPreference = 'Stop'
                             
-                            # 2. FIX PERMISSIONS (The Magic Step)
-                            # Remove inheritance and grant Read-Only access JUST to the current user
-                            # This satisfies the "UNPROTECTED PRIVATE KEY FILE" error.
-                            icacls "\$key" /inheritance:r /grant:r "\$env:USERNAME:R"
+                            # 1. Get the path to the temporary key file
+                            \$keyPath = "\$env:SSH_KEY"
                             
-                            # 3. Define the long Docker command (broken into a variable for safety)
-                            \$dockerCmd = "sudo docker pull mongo:6 && sudo docker pull ${DOCKERHUB_USERNAME}/${BACKEND_IMAGE}:latest && sudo docker pull ${DOCKERHUB_USERNAME}/${FRONTEND_IMAGE}:latest && sudo docker stop trainbook_dev-frontend trainbook_dev-backend mongo-db || true && sudo docker rm trainbook_dev-frontend trainbook_dev-backend mongo-db || true && sudo docker network create app-network || true && sudo docker run -d --name mongo-db --network app-network -p 27017:27017 mongo:6 && sudo docker run -d --name trainbook_dev-backend --network app-network -p 5000:5000 -e MONGO_URL=mongodb://mongo-db:27017/authdb ${DOCKERHUB_USERNAME}/${BACKEND_IMAGE}:latest && sudo docker run -d --name trainbook_dev-frontend --network app-network -p 80:5173 ${DOCKERHUB_USERNAME}/${FRONTEND_IMAGE}:latest"
+                            # 2. FIX PERMISSIONS (Critical Step)
+                            # 'icacls' removes inherited permissions (/inheritance:r)
+                            # and grants Read-only access (/grant:r) ONLY to the current Jenkins user.
+                            Write-Host "Securing private key permissions for \$keyPath..."
+                            icacls "\$keyPath" /inheritance:r /grant:r "\$env:USERNAME:R"
                             
-                            # 4. Run SSH
-                            Write-Host "Connecting to ${SERVER_IP}..."
-                            ssh -i "\$key" -o StrictHostKeyChecking=no ubuntu@${SERVER_IP} \$dockerCmd
+                            # 3. Define variables for the command to keep it clean
+                            \$ip = "${SERVER_IP}"
+                            \$user = "${DOCKERHUB_USERNAME}"
+                            \$back = "${BACKEND_IMAGE}"
+                            \$front = "${FRONTEND_IMAGE}"
+                            
+                            # 4. Build the remote Docker command
+                            \$remoteCmd = "sudo docker pull mongo:6 && " +
+                                         "sudo docker pull \$user/\$back:latest && " +
+                                         "sudo docker pull \$user/\$front:latest && " +
+                                         "sudo docker stop trainbook_dev-frontend trainbook_dev-backend mongo-db || true && " +
+                                         "sudo docker rm trainbook_dev-frontend trainbook_dev-backend mongo-db || true && " +
+                                         "sudo docker network create app-network || true && " +
+                                         "sudo docker run -d --name mongo-db --network app-network -p 27017:27017 mongo:6 && " +
+                                         "sudo docker run -d --name trainbook_dev-backend --network app-network -p 5000:5000 -e MONGO_URL=mongodb://mongo-db:27017/authdb \$user/\$back:latest && " +
+                                         "sudo docker run -d --name trainbook_dev-frontend --network app-network -p 80:5173 \$user/\$front:latest"
+
+                            # 5. Run SSH
+                            Write-Host "Connecting to \$ip..."
+                            ssh -i "\$keyPath" -o StrictHostKeyChecking=no ubuntu@\$ip \$remoteCmd
                         """
                     }
                 }
