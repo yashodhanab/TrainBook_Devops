@@ -17,24 +17,7 @@ pipeline {
             }
         }
 
-        stage('Provision Infrastructure') {
-            steps {
-                dir('terraform') {
-                    withCredentials([
-                        usernamePassword(credentialsId: AWS_CREDS_ID, usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY'),
-                        usernamePassword(credentialsId: DOCKER_REGISTRY_CRED_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
-                    ]) {
-                        // FIX: Use 'bat' instead of 'sh'. Use %VAR% for environment variables.
-                        bat '''
-                        terraform init
-                        terraform plan -var="docker_username=%DOCKER_USER%" -var="docker_password=%DOCKER_PASS%"
-                        terraform apply -auto-approve -var="docker_username=%DOCKER_USER%" -var="docker_password=%DOCKER_PASS%"
-                        terraform output -raw instance_ip > ../server_ip.txt
-                        '''
-                    }
-                }
-            }
-        }
+        
 
         stage('Build Images') {
             steps {
@@ -75,6 +58,24 @@ pipeline {
             }
         }
 
+        stage('Provision Infrastructure') {
+            steps {
+                dir('terraform') {
+                    withCredentials([
+                        usernamePassword(credentialsId: AWS_CREDS_ID, usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY'),
+                        usernamePassword(credentialsId: DOCKER_REGISTRY_CRED_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
+                    ]) {
+                        // FIX: Use 'bat' instead of 'sh'. Use %VAR% for environment variables.
+                        bat '''
+                        terraform init
+                        terraform plan -var="docker_username=%DOCKER_USER%" -var="docker_password=%DOCKER_PASS%"
+                        terraform apply -auto-approve -var="docker_username=%DOCKER_USER%" -var="docker_password=%DOCKER_PASS%"
+                        terraform output -raw instance_ip > ../server_ip.txt
+                        '''
+                    }
+                }
+            }
+        }
         stage('Deploy to EC2') {
             steps {
                 script {
