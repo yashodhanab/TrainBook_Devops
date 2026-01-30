@@ -35,7 +35,7 @@ resource "aws_security_group" "web_sg" {
 resource "aws_instance" "app_server" {
   ami           = "ami-04b70fa74e45c3917"
   instance_type = "t3.micro"
-  key_name      = "my-key-pair"
+  key_name      = "jenkins-fix-key"
   security_groups = [aws_security_group.web_sg.name]
 
   # FIX: Only install Docker. Do NOT run the app here. Let Jenkins do it.
