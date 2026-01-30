@@ -15,7 +15,7 @@ const MONGO_URL = process.env.MONGODB_URI || process.env.MONGO_URL || "mongodb:/
 
 mongoose.connect(MONGO_URL)
   .then(() => console.log(`✅ MongoDB connected to ${MONGO_URL}`))
-  .catch((err) => console.error("❌ MongoDB error:", err));
+  .catch((err) => console.error("❌ MongoDB error!:", err));
 
 // User schema
 const userSchema = new mongoose.Schema({
