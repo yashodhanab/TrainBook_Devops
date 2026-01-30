@@ -1,90 +1,38 @@
-# version: "3.9"
-
-# services:
-#   mongodb:
-#     image: mongo:6
-#     container_name: mongo_container
-#     restart: unless-stopped
-#     ports:
-#       - "27017:27017"
-#     environment:
-#       MONGO_INITDB_ROOT_USERNAME: admin
-#       MONGO_INITDB_ROOT_PASSWORD: secret123
-#       MONGO_INITDB_DATABASE: authdb
-#     # Use a Docker volume instead of a bind mount
-#     volumes:
-#       - mongo_data:/data/db
-
-#   backend:
-#     build: ./traindevback
-#     image: trainbook_dev-backend:latest
-#     container_name: node_backend
-#     restart: always
-#     ports:
-#       - "5000:5000"
-#     environment:
-#       - MONGO_URL=mongodb://admin:secret123@mongodb:27017/authdb?authSource=admin
-#     depends_on:
-#       - mongodb
-
-#   frontend:
-#     build: ./traindev
-#     image: trainbook_dev-frontend:latest
-#     container_name: vite_frontend
-#     restart: always
-#     ports:
-#       - "5173:5173"
-#     depends_on:
-#       - backend
-
-# volumes:
-#   mongo_data:
-
-
-
+version: '3.8'
 services:
-  mongodb:
-    image: mongo:6
-    container_name: mongo_container
-    restart: always
-    ports:
-      - "27018:27017"
-    volumes:
-      - mongo_data:/data/db
-    deploy:
-      resources:
-        limits:
-          memory: 300M
-
   backend:
     build: ./traindevback
-    image: trainbook_dev-backend:latest
-    container_name: node_backend
-    restart: always
+    image: trainbook-backend:${IMAGE_TAG:-latest}
+    container_name: trainbook_backend
     ports:
       - "5000:5000"
     environment:
-      - MONGO_URL=mongodb://mongodb:27017/authdb
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://mongo:27017/auth_db
     depends_on:
-      - mongodb
-    deploy:
-      resources:
-        limits:
-          memory: 300M
+      - mongo
+    restart: unless-stopped
 
   frontend:
     build: ./traindev
-    image: trainbook_dev-frontend:latest
-    container_name: vite_frontend
-    restart: always
+    image: trainbook-frontend:${IMAGE_TAG:-latest}
+    container_name: trainbook_frontend
     ports:
       - "5173:5173"
     depends_on:
       - backend
-    deploy:
-      resources:
-        limits:
-          memory: 300M
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:6
+    container_name: mongo-db
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=auth_db
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
 
 volumes:
   mongo_data:
