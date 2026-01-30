@@ -201,40 +201,12 @@ pipeline {
                     echo "Deploying to Server at: ${SERVER_IP}"
                     
                     sleep time: 45, unit: 'SECONDS' 
-
-                    withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY_FILE')]) {
-                        powershell """
-                            \$ErrorActionPreference = 'Stop'
-                            \$sourceKey = "\$env:SSH_KEY_FILE"
-                            \$tempKey = "\$env:TEMP\\jenkins_deploy_key.pem"
-                            \$ip = "${SERVER_IP}"
-
-                            # 1. Copy key to TEMP to get a clean file (Bypassing workspace permissions)
-                            Copy-Item "\$sourceKey" -Destination "\$tempKey" -Force
-
-                            # 2. Fix Permissions using User SID (Fixes IdentityNotMappedException)
-                            Write-Host "Securing private key..."
-                            \$acl = Get-Acl \$tempKey
-                            \$acl.SetAccessRuleProtection(\$true, \$false) # Wipes old permissions
-                            
-                            # FIX: We use the SID (Security ID) instead of the Username string.
-                            # This bypasses translation errors for System accounts.
-                            \$currentUserSID = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
-                            Write-Host "Granting access to SID: \$currentUserSID"
-                            
-                            \$rule = New-Object System.Security.AccessControl.FileSystemAccessRule(\$currentUserSID, "Read", "Allow")
-                            \$acl.AddAccessRule(\$rule)
-                            Set-Acl \$tempKey \$acl
-
-                            # 3. Run Docker Command
-                            \$cmd = "sudo docker pull mongo:6 && sudo docker pull ${DOCKERHUB_USERNAME}/${BACKEND_IMAGE}:latest && sudo docker pull ${DOCKERHUB_USERNAME}/${FRONTEND_IMAGE}:latest && sudo docker stop trainbook_dev-frontend trainbook_dev-backend mongo-db || true && sudo docker rm trainbook_dev-frontend trainbook_dev-backend mongo-db || true && sudo docker network create app-network || true && sudo docker run -d --name mongo-db --network app-network -p 27017:27017 mongo:6 && sudo docker run -d --name trainbook_dev-backend --network app-network -p 5000:5000 -e MONGO_URL=mongodb://mongo-db:27017/authdb ${DOCKERHUB_USERNAME}/${BACKEND_IMAGE}:latest && sudo docker run -d --name trainbook_dev-frontend --network app-network -p 80:5173 ${DOCKERHUB_USERNAME}/${FRONTEND_IMAGE}:latest"
-                            
-                            # 4. Connect
-                            Write-Host "Connecting to \$ip..."
-                            ssh -i "\$tempKey" -o StrictHostKeyChecking=no ubuntu@\$ip \$cmd
-                            
-                            # 5. Cleanup
-                            Remove-Item "\$tempKey" -Force
+                    
+                    // The 'sshagent' wrapper automatically handles the key securely in memory.
+                    // No 'powershell', no 'icacls', no permission errors.
+                    sshagent(credentials: ['ec2-ssh-key']) {
+                        bat """
+                            ssh -o StrictHostKeyChecking=no ubuntu@${SERVER_IP} "sudo docker pull mongo:6 && sudo docker pull ${DOCKERHUB_USERNAME}/${BACKEND_IMAGE}:latest && sudo docker pull ${DOCKERHUB_USERNAME}/${FRONTEND_IMAGE}:latest && sudo docker stop trainbook_dev-frontend trainbook_dev-backend mongo-db || true && sudo docker rm trainbook_dev-frontend trainbook_dev-backend mongo-db || true && sudo docker network create app-network || true && sudo docker run -d --name mongo-db --network app-network -p 27017:27017 mongo:6 && sudo docker run -d --name trainbook_dev-backend --network app-network -p 5000:5000 -e MONGO_URL=mongodb://mongo-db:27017/authdb ${DOCKERHUB_USERNAME}/${BACKEND_IMAGE}:latest && sudo docker run -d --name trainbook_dev-frontend --network app-network -p 80:5173 ${DOCKERHUB_USERNAME}/${FRONTEND_IMAGE}:latest"
                         """
                     }
                 }
