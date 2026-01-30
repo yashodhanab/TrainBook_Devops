@@ -2,17 +2,12 @@ pipeline {
     agent any
 
     environment {
-        // AWS Credentials ID stored in Jenkins
         AWS_CRED_ID             = 'aws-credentials'
-        
-        // Docker Config
         DOCKER_REGISTRY_CRED_ID = 'dockerhub'
         DOCKERHUB_USERNAME      = 'yashodhana'
         BACKEND_IMAGE           = 'trainbook_dev-backend'
         FRONTEND_IMAGE          = 'trainbook_dev-frontend'
         TAG                     = "${env.BUILD_NUMBER}"
-        
-        // Terraform Config (Set region here)
         TF_VAR_region           = 'ap-south-1'
     }
 
@@ -27,8 +22,6 @@ pipeline {
             steps {
                 script {
                     echo "Building and Pushing Docker Images..."
-                    // Note: We don't need SERVER_IP for build anymore because frontend is dynamic!
-                    
                     bat "docker build -t %DOCKERHUB_USERNAME%/%FRONTEND_IMAGE%:latest -t %DOCKERHUB_USERNAME%/%FRONTEND_IMAGE%:%TAG% ./traindev"
                     bat "docker build -t %DOCKERHUB_USERNAME%/%BACKEND_IMAGE%:latest -t %DOCKERHUB_USERNAME%/%BACKEND_IMAGE%:%TAG% ./traindevback"
                     
@@ -53,8 +46,6 @@ pipeline {
                     withCredentials([usernamePassword(credentialsId: AWS_CRED_ID, usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
                         bat 'terraform init'
                         bat 'terraform apply -auto-approve'
-                        
-                        // Save the IP address to a file so the next stage can read it
                         bat 'terraform output -raw public_ip > server_ip.txt'
                     }
                 }
@@ -67,21 +58,29 @@ pipeline {
                     def SERVER_IP = readFile('server_ip.txt').trim()
                     echo "Deploying to ${SERVER_IP}..."
 
-                    // 1. Fix Key Permissions (Attempt to handle Windows environment)
-                    // If this fails on Windows, you might need to use 'icacls' manually or ignore strict checking
+                    // --- FIX 1: Windows Permissions for SSH Key ---
                     if (isUnix()) {
                         sh 'chmod 400 trainbook-key.pem'
+                    } else {
+                        // Windows specific command to make key read-only
+                        // 1. Reset permissions
+                        // 2. Disable inheritance
+                        // 3. Grant current user read access
+                        bat 'icacls trainbook-key.pem /reset'
+                        bat 'icacls trainbook-key.pem /inheritance:r'
+                        bat "icacls trainbook-key.pem /grant:r \"%USERNAME%\":R"
                     }
 
-                    // 2. Wait for Docker to finish installing (Simple sleep)
-                    sleep 10 
+                    // --- FIX 2: Wait for Docker Installation ---
+                    echo "Waiting 100 seconds for EC2 User Data to install Docker..."
+                    sleep 100 
 
-                    // 3. Copy docker-compose.yml to the server
-                    // Use StrictHostKeyChecking=no to avoid "Are you sure?" prompt
+                    // 3. Copy docker-compose.yml
+                    echo "Copying configuration..."
                     bat "scp -o StrictHostKeyChecking=no -i trainbook-key.pem docker-compose.yml ubuntu@${SERVER_IP}:/home/ubuntu/docker-compose.yml"
 
                     // 4. Run Docker Compose
-                    // We pass the BUILD_NUMBER as IMAGE_TAG so it pulls the version we just built
+                    echo "Starting containers..."
                     bat """
                     ssh -o StrictHostKeyChecking=no -i trainbook-key.pem ubuntu@${SERVER_IP} "export IMAGE_TAG=${TAG} && docker compose pull && docker compose up -d"
                     """
