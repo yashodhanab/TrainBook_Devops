@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Login.css";
 import axios from "axios";
+import { API_BASE_URL } from "../config";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ export default function Login() {
     try {
       if (activeTab === "signin") {
         // Sign In request
-        const res = await axios.post("http://localhost:5000/login", {
+        const res = await axios.post(`${API_BASE_URL}/login`, {
           email,
           password,
         });
@@ -34,7 +35,7 @@ export default function Login() {
 
       } else {
         // Sign Up request
-        const res = await axios.post("http://localhost:5000/signup", {
+        const res = await axios.post(`${API_BASE_URL}/signup`, {
           email,
           password,
           username,

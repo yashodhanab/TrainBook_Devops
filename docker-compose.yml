@@ -51,6 +51,10 @@ services:
       - "27018:27017"
     volumes:
       - mongo_data:/data/db
+    deploy:
+      resources:
+        limits:
+          memory: 300M
 
   backend:
     build: ./traindevback
@@ -63,6 +67,10 @@ services:
       - MONGO_URL=mongodb://mongodb:27017/authdb
     depends_on:
       - mongodb
+    deploy:
+      resources:
+        limits:
+          memory: 300M
 
   frontend:
     build: ./traindev
@@ -73,6 +81,10 @@ services:
       - "5173:5173"
     depends_on:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 300M
 
 volumes:
   mongo_data:

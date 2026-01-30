@@ -1,59 +1,25 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-}
-
-provider "aws" {
-  region = var.aws_region
-}
-
-# Generate a new SSH key pair
-resource "tls_private_key" "pk" {
-  algorithm = "RSA"
-  rsa_bits  = 4096
-}
-
-resource "aws_key_pair" "generated_key" {
-  key_name   = var.key_name
-  public_key = tls_private_key.pk.public_key_openssh
-}
-
-resource "local_file" "private_key" {
-  content  = tls_private_key.pk.private_key_pem
-  filename = "${path.module}/${var.key_name}.pem"
-  file_permission = "0400"
-}
-
-
-# Security Group
-resource "aws_security_group" "trainBook_sg" {
-  name        = "trainBook-security-group"
-  description = "Allow SSH and App Traffic"
+resource "aws_security_group" "web_sg" {
+  name        = "jenkins-demo-sg-v2"
+  description = "Allow SSH and HTTP"
 
   ingress {
-    description = "SSH"
+    from_port   = 5000
+    to_port     = 5000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  
+  ingress {
     from_port   = 22
     to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # For production, restrict this to your IP
-  }
-
-  ingress {
-    description = "Frontend"
-    from_port   = 5173
-    to_port     = 5173
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # FIX: Allow Port 80 for the browser
   ingress {
-    description = "Backend"
-    from_port   = 5000
-    to_port     = 5000
+    from_port   = 80
+    to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -66,58 +32,27 @@ resource "aws_security_group" "trainBook_sg" {
   }
 }
 
-# AMI (Amazon Linux 2)
-data "aws_ami" "amazon_linux_2" {
-  most_recent = true
-  owners      = ["amazon"]
+resource "aws_instance" "app_server" {
+  ami           = "ami-04b70fa74e45c3917"
+  instance_type = "t3.micro"
+  key_name      = "my-key-pair"
+  security_groups = [aws_security_group.web_sg.name]
 
-  filter {
-    name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
-  }
-}
-
-# EC2 Instance
-resource "aws_instance" "trainBook_server" {
-  ami           = data.aws_ami.amazon_linux_2.id
-  instance_type = var.instance_type
-  key_name      = aws_key_pair.generated_key.key_name
-
-  vpc_security_group_ids = [aws_security_group.trainBook_sg.id]
-
+  # FIX: Only install Docker. Do NOT run the app here. Let Jenkins do it.
   user_data = <<-EOF
               #!/bin/bash
-              set -e
-              
-              # 1. Update OS
-              yum update -y
-
-              # 2. Install Docker using Amazon Extras (The "Native" Way)
-              amazon-linux-extras install docker -y
-    
-              # 3. Start & Enable Docker
-              systemctl start docker
-              systemctl enable docker
-    
-              # 4. Add ec2-user to docker group
-              usermod -aG docker ec2-user
-
-              # 5. Install Docker Compose (Standalone Binary)
-              # AL2 is older, so the standalone binary in /usr/local/bin is more reliable 
-              # than the plugin method for "docker compose" commands.
-              curl -SL https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose
-    
-              chmod +x /usr/local/bin/docker-compose
-    
-              # Optional: Alias 'docker compose' to 'docker-compose' for convenience
-              echo 'alias "docker compose"="docker-compose"' >> /home/ec2-user/.bashrc
-
-              # Signal completion
-              touch /var/lib/cloud/instance/docker-ready
+              sudo apt-get update
+              sudo apt-get install -y docker.io
+              sudo systemctl start docker
+              sudo systemctl enable docker
+              sudo usermod -aG docker ubuntu
               EOF
 
   tags = {
-    Name = "trainBookAppInstance"
+    Name = "DevOps-Project-Server"
   }
 }
 
+output "instance_ip" {
+  value = aws_instance.app_server.public_ip
+}
