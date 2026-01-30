@@ -23,14 +23,23 @@ pipeline {
             steps {
                 script {
                     if (!fileExists('server_ip.txt')) {
-                        error "server_ip.txt was not found. Terraform failed?"
+                        error "server_ip.txt was not found. Terraform failed completely."
                     }
+                    
+                    // Read the file
                     def SERVER_IP = readFile('server_ip.txt').trim()
+                    
+                    // SAFETY CHECK: If the file contains "Warning" or is empty, fail the build
+                    if (SERVER_IP.contains("Warning") || SERVER_IP.contains("No outputs") || SERVER_IP.isEmpty()) {
+                        echo "ERROR: Terraform did not return an IP Address."
+                        echo "Terraform Output was: ${SERVER_IP}"
+                        error "Stopping build because valid Server IP is missing."
+                    }
+                    
+                    echo "Valid IP Found: ${SERVER_IP}"
                     echo "Building Frontend with API URL: http://${SERVER_IP}:5000"
 
-                    // FIX: Use 'bat'. Groovy ${SERVER_IP} is injected before the command runs.
                     bat "docker build --build-arg VITE_API_URL=http://${SERVER_IP}:5000 -t %DOCKERHUB_USERNAME%/%FRONTEND_IMAGE%:latest ./traindev"
-                    
                     bat "docker build -t %DOCKERHUB_USERNAME%/%BACKEND_IMAGE%:latest ./traindevback"
                 }
             }
@@ -58,18 +67,22 @@ pipeline {
             }
         }
 
-        stage('Provision Infrastructure') {
+       stage('Provision Infrastructure') {
             steps {
                 dir('terraform') {
                     withCredentials([
                         usernamePassword(credentialsId: AWS_CREDS_ID, usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY'),
                         usernamePassword(credentialsId: DOCKER_REGISTRY_CRED_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
                     ]) {
-                        // FIX: Use 'bat' instead of 'sh'. Use %VAR% for environment variables.
+                        // FIX: 
+                        // 1. Added '&&' to stop if any command fails.
+                        // 2. Added '-no-color' to prevent garbage characters.
+                        // 3. Added 'terraform refresh' to force output calculation.
                         bat '''
-                        terraform init
-                        terraform plan -var="docker_username=%DOCKER_USER%" -var="docker_password=%DOCKER_PASS%"
-                        terraform apply -auto-approve -var="docker_username=%DOCKER_USER%" -var="docker_password=%DOCKER_PASS%"
+                        terraform init -no-color && ^
+                        terraform plan -no-color -var="docker_username=%DOCKER_USER%" -var="docker_password=%DOCKER_PASS%" -out=tfplan && ^
+                        terraform apply -no-color -auto-approve tfplan && ^
+                        terraform refresh -no-color && ^
                         terraform output -raw instance_ip > ../server_ip.txt
                         '''
                     }
