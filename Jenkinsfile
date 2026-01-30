@@ -24,8 +24,8 @@ pipeline {
                         usernamePassword(credentialsId: AWS_CREDS_ID, usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY'),
                         usernamePassword(credentialsId: DOCKER_REGISTRY_CRED_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
                     ]) {
-                        // FIX: Commands are now separate. 
-                        // No more "^" symbols means no more "invisible space" errors.
+                        // FIX: WE ARE NOT USING "^" ANYMORE.
+                        // We run each command separately. This fixes your error.
                         
                         bat 'terraform init -no-color'
                         
@@ -50,7 +50,7 @@ pipeline {
                     
                     def SERVER_IP = readFile('server_ip.txt').trim()
                     
-                    // SAFETY CHECK: Fail gracefully if IP is missing
+                    // SAFETY CHECK: Fail if Terraform returned a warning instead of an IP
                     if (SERVER_IP.contains("Warning") || SERVER_IP.contains("No outputs") || SERVER_IP == "") {
                         echo "Terraform Output was: ${SERVER_IP}"
                         error "BUILD FAILED: Terraform did not return a valid IP Address. Did you add the 'output' block to main.tf?"
