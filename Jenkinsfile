@@ -24,16 +24,19 @@ pipeline {
                         usernamePassword(credentialsId: AWS_CREDS_ID, usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY'),
                         usernamePassword(credentialsId: DOCKER_REGISTRY_CRED_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
                     ]) {
-                        // FIX: All commands are separate. NO "^" symbols.
-                        
+                        // 1. Init
                         bat 'terraform init -no-color'
                         
+                        // 2. Plan
                         bat 'terraform plan -no-color -var="docker_username=%DOCKER_USER%" -var="docker_password=%DOCKER_PASS%" -out=tfplan'
                         
+                        // 3. Apply
                         bat 'terraform apply -no-color -auto-approve tfplan'
                         
-                        bat 'terraform refresh -no-color'
+                        // 4. FIX: Refresh also needs variables!
+                        bat 'terraform refresh -no-color -var="docker_username=%DOCKER_USER%" -var="docker_password=%DOCKER_PASS%"'
                         
+                        // 5. Output
                         bat 'terraform output -raw instance_ip > ../server_ip.txt'
                     }
                 }
@@ -49,12 +52,16 @@ pipeline {
                     
                     def SERVER_IP = readFile('server_ip.txt').trim()
                     
+                    // SAFETY CHECK
                     if (SERVER_IP.contains("Warning") || SERVER_IP.contains("No outputs") || SERVER_IP == "") {
                         echo "Terraform Output was: ${SERVER_IP}"
                         error "BUILD FAILED: Terraform did not return a valid IP Address."
                     }
                     
                     echo "Valid IP Found: ${SERVER_IP}"
+                    echo "Building Frontend with API URL: http://${SERVER_IP}:5000"
+
+                    // Build commands
                     bat "docker build --build-arg VITE_API_URL=http://${SERVER_IP}:5000 -t %DOCKERHUB_USERNAME%/%FRONTEND_IMAGE%:latest ./traindev"
                     bat "docker build -t %DOCKERHUB_USERNAME%/%BACKEND_IMAGE%:latest ./traindevback"
                 }
@@ -71,8 +78,10 @@ pipeline {
                     )]) {
                         bat '''
                         echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
+                        
                         docker push %DOCKERHUB_USERNAME%/%FRONTEND_IMAGE%:latest
                         docker push %DOCKERHUB_USERNAME%/%BACKEND_IMAGE%:latest
+                        
                         docker logout
                         '''
                     }
@@ -85,6 +94,8 @@ pipeline {
                 script {
                     def SERVER_IP = readFile('server_ip.txt').trim()
                     echo "Deploying to Server at: ${SERVER_IP}"
+                    
+                    // Wait for EC2 SSH to be ready
                     sleep time: 45, unit: 'SECONDS' 
 
                     sshagent(credentials: ['ec2-ssh-key']) {
