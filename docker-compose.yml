@@ -1,8 +1,48 @@
+# version: '3.8'
+# services:
+#   backend:
+#     build: ./traindevback
+#     image: trainbook-backend:${IMAGE_TAG:-latest}
+#     container_name: trainbook_backend
+#     ports:
+#       - "5000:5000"
+#     environment:
+#       - NODE_ENV=development
+#       - MONGODB_URI=mongodb://mongo:27017/auth_db
+#     depends_on:
+#       - mongo
+#     restart: unless-stopped
+
+#   frontend:
+#     build: ./traindev
+#     image: trainbook-frontend:${IMAGE_TAG:-latest}
+#     container_name: trainbook_frontend
+#     ports:
+#       - "5173:5173"
+#     depends_on:
+#       - backend
+#     restart: unless-stopped
+
+#   mongo:
+#     image: mongo:6
+#     container_name: mongo-db
+#     ports:
+#       - "27017:27017"
+#     environment:
+#       - MONGO_INITDB_DATABASE=auth_db
+#     volumes:
+#       - mongo_data:/data/db
+#     restart: unless-stopped
+
+# volumes:
+#   mongo_data:
+
+
 version: '3.8'
 services:
   backend:
-    build: ./traindevback
-    image: trainbook-backend:${IMAGE_TAG:-latest}
+    # Point to your Docker Hub User/Image
+    image: yashodhana/trainbook_dev-backend:${IMAGE_TAG:-latest}
     container_name: trainbook_backend
     ports:
       - "5000:5000"
@@ -14,8 +54,8 @@ services:
     restart: unless-stopped
 
   frontend:
-    build: ./traindev
-    image: trainbook-frontend:${IMAGE_TAG:-latest}
+    # Point to your Docker Hub User/Image
+    image: yashodhana/trainbook_dev-frontend:${IMAGE_TAG:-latest}
     container_name: trainbook_frontend
     ports:
       - "5173:5173"
