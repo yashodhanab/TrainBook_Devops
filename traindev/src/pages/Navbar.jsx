@@ -1,14 +1,22 @@
 import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import "./Navbar.css";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const toggleMenu = () => setOpen(!open);
 
   const isActive = (path) => location.pathname === path;
+
+  const isLoggedIn = !!localStorage.getItem("username");
+
+  const handleLogout = () => {
+    localStorage.removeItem("username");
+    navigate("/login");
+  };
 
   return (
     <nav className="navbar">
@@ -22,9 +30,15 @@ export default function Navbar() {
         <Link to="/" className={isActive("/") ? "active" : ""}>
           Home
         </Link>
-        <Link to="/login" className={isActive("/login") ? "active" : ""}>
-          Login
-        </Link>
+        {isLoggedIn ? (
+          <button className="nav-btn" onClick={handleLogout}>
+            Logout
+          </button>
+        ) : (
+          <Link to="/login" className={isActive("/login") ? "active" : ""}>
+            Login
+          </Link>
+        )}
         <Link to="/about" className={isActive("/about") ? "active" : ""}>
           About
         </Link>

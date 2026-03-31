@@ -126,11 +126,10 @@
 // }
 
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Login.css";
 import axios from "axios";
-// import { API_BASE_URL } from "../config"; // <--- DELETE or COMMENT OUT this line
 
 export default function Login() {
   const navigate = useNavigate();
@@ -147,6 +146,13 @@ export default function Login() {
   const API_BASE_URL = `http://${hostname}:5000`; 
   // ----------------------------------
 
+  // Auto-navigate to HomePage if already logged in
+  useEffect(() => {
+    if (localStorage.getItem("username")) {
+      navigate("/HomePage");
+    }
+  }, [navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -159,6 +165,9 @@ export default function Login() {
         });
 
         console.log("Login successful! Welcome, " + (res.data.username || email));
+
+        // Save username in localStorage so we remember they are logged in
+        localStorage.setItem("username", res.data.username || email);
 
         // Clear errors
         setMessage("");
