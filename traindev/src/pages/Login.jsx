@@ -164,7 +164,7 @@ export default function Login() {
         setMessage("");
 
         // Redirect to Home
-        navigate("/");
+        navigate("/HomePage");
 
       } else {
         // --- Sign Up Request ---
