@@ -233,23 +233,7 @@ resource "aws_instance" "web_server" {
     host        = self.public_ip
   }
 
-  # Copy Docker Compose File only
-  provisioner "file" {
-    source      = "./docker-compose.yml"
-    destination = "/home/ubuntu/docker-compose.yml"
-  }
-
-  # Create .env file for Docker variables
-  provisioner "remote-exec" {
-    inline = [
-      "echo 'DOCKER_USERNAME=${var.docker_username}' > /home/ubuntu/.env",
-      "echo 'FRONTEND_IMAGE=${var.frontend_image}' >> /home/ubuntu/.env",
-      "echo 'BACKEND_IMAGE=${var.backend_image}' >> /home/ubuntu/.env",
-      "echo 'IMAGE_TAG=${var.image_tag}' >> /home/ubuntu/.env"
-    ]
-  }
-
-  # Install Docker & Start App
+  # Only Install Docker initially
   provisioner "remote-exec" {
     inline = [
       "sudo apt-get update -y",
@@ -260,14 +244,47 @@ resource "aws_instance" "web_server" {
       "echo \"deb [arch=\"$(dpkg --print-architecture)\" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \"$(. /etc/os-release && echo \"$VERSION_CODENAME\")\" stable\" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null",
       "sudo apt-get update -y",
       "sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin",
-      "sudo usermod -aG docker ubuntu",
+      "sudo usermod -aG docker ubuntu"
+    ]
+  }
+}
+
+# --- 4. Deployment Trigger (Runs every time the image tag changes) ---
+resource "null_resource" "deploy_app" {
+  triggers = {
+    # The build number changes every pipeline run
+    image_tag = var.image_tag
+  }
+
+  connection {
+    type        = "ssh"
+    user        = "ubuntu"
+    private_key = file(var.ssh_private_key_path)
+    host        = aws_instance.web_server.public_ip
+  }
+
+  # Copy Docker Compose File
+  provisioner "file" {
+    source      = "./docker-compose.yml"
+    destination = "/home/ubuntu/docker-compose.yml"
+  }
+
+  # Update .env and Start App
+  provisioner "remote-exec" {
+    inline = [
+      "echo 'DOCKER_USERNAME=${var.docker_username}' > /home/ubuntu/.env",
+      "echo 'FRONTEND_IMAGE=${var.frontend_image}' >> /home/ubuntu/.env",
+      "echo 'BACKEND_IMAGE=${var.backend_image}' >> /home/ubuntu/.env",
+      "echo 'IMAGE_TAG=${var.image_tag}' >> /home/ubuntu/.env",
       
-      # Pull images and run
       "cd /home/ubuntu",
       "sudo docker compose pull", 
+      "sudo docker compose down",
       "sudo docker compose up -d"
     ]
   }
+  
+  depends_on = [aws_instance.web_server]
 }
 
 output "frontend_url" {
