@@ -208,7 +208,7 @@ export default function Login() {
     <div className="login-page">
       <div className="login-left">
         <div className="overlay">
-          <h1>Welcome to TrainBook</h1>
+          <h1>Welcome  TrainBook</h1>
           <p>Book your journey with ease and comfort</p>
         </div>
       </div>
